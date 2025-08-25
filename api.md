@@ -1,245 +1,117 @@
--- api 종류
+# Opinet API 사용 가이드 (2024 Free) — 면세유 제외
 
---------------------------------------------------------------------------------
-- 전국 주유소 평균가격(현재) : 현재 오피넷에 게시되고 있는 전국 주유소 평균 가격
-rest : http://www.opinet.co.kr/api/avgAllPrice.do?out=xml&code=XXXXXX
--- Request
-code 필수 공사에서 부여한 키(key) 정보
-out 필수 정보 노출 형식을 정의 한다.(xml/json)
--- Result
-TRADE_DT 해당일자
-PRODCD 제품구분코드
-PRODNM 제품명
-PRICE 평균가격
-DIFF 전일대비 등락값
+공통
+- Base URL: `https://www.opinet.co.kr`
+- 포맷: `out=json|xml` (예시는 `json` 기준)
+- 인증: `code=발급키`
+- 제품코드: `B034(고급휘발유)`, `B027(보통휘발유)`, `D047(자동차경유)`, `C004(실내등유)`, `K015(자동차부탄)`
+- API Limit: 하루 1,500회
+- 갱신주기: 현재 판매가격(1,2,9,12,16,19시), 일일 평균가격(24시), 주간 평균가격(금 10시), 요소수(7,13,18,24시)
 
---------------------------------------------------------------------------------
-- 시도별 주유소 평균가격(현재) : 현재 오피넷에 게시되고 있는 시도별 주유소 평균 가격
-rest :  http://www.opinet.co.kr/api/avgSidoPrice.do?out=xml&code=XXXXXX
--- Request 
-code 필수 공사에서 부여한 키(key) 정보
-out 필수 정보 노출 형식을 정의 한다.(xml/json)
-sido 선택 시도코드 2자리 ( 미입력시 모든 시도 조회 )
-prodcd 선택 B034:고급휘발유, B027:보통휘발유, D047:자동차경유, C004:실내등유, K015:자동차부탄
-(미입력시 모든 제품 조회)
--- Result
-SIDOCD 시도 구분코드
-SIDONM 시도명
-PRODCD 제품구분
-PRICE 평균가격
-DIFF 전일대비 등락값
+## 1) 전국 주유소 평균가격(현재) — avgAllPrice
+- Endpoint: `GET /api/avgAllPrice.do`
+- Query: `code`(필수), `out`(필수)
+- 응답 필드: `TRADE_DT`, `PRODCD`, `PRODNM`, `PRICE`, `DIFF`
+- 예시: `/api/avgAllPrice.do?out=json&code=XXXXXX`
+- 샘플 응답
+  {"RESULT":{"OIL":[{"TRADE_DT":"20240825","PRODCD":"B027","PRODNM":"보통휘발유","PRICE":"1725.43","DIFF":"-2.10"}]}}
 
---------------------------------------------------------------------------------
-- 시군구별 주유소 평균가격(현재) : 현재 오피넷에 게시되고 있는 시/군/구별 주유소 평균 가격
-rest : http://www.opinet.co.kr/api/avgSigunPrice.do?out=xml&sido=01&code=XXXXXX
--- Request
-code 필수 공사에서 부여한 키(key) 정보
-out 필수 정보 노출 형식을 정의 한다.(xml/json)
-sido 필수 시도코드 2자리
-sigun 선택 시군코드 4자리 (미입력시 전체 시군 조회 )
-prodcd 선택 B034:고급휘발유, B027:보통휘발유, D047:자동차경유, C004:실내등유, K015:자동차부탄(미입력시 모든 제품 조회)
--- Result
-SIGUNCD 시군구 구분코드
-SIGUNNM 시군구명
-PRODCD 제품구분
-PRICE 평균가격
-DIFF 전일대비 등락값
+## 2) 시도별 평균가격(현재) — avgSidoPrice
+- Endpoint: `GET /api/avgSidoPrice.do`
+- Query: `code`(필수), `out`(필수), `sido`(선택, 2자리), `prodcd`(선택)
+- 응답 필드: `SIDOCD`, `SIDONM`, `PRODCD`, `PRICE`, `DIFF`
+- 예시: `/api/avgSidoPrice.do?out=json&code=XXXXXX&sido=01&prodcd=B027`
+- 샘플 응답
+  {"RESULT":{"OIL":[{"SIDOCD":"01","SIDONM":"서울","PRODCD":"B027","PRICE":"1810.12","DIFF":"-1.00"}]}}
 
---------------------------------------------------------------------------------
-- 최근 7일간 전국 일일 평균가격 : 일 평균가격 확정 수치이며, 전일부터 이전 7일간의 전국 일일 평균가격
-rest :  http://www.opinet.co.kr/api/avgRecentPrice.do?out=xml&code=XXXXXX
--- Request
-code 필수 공사에서 부여한 키(key) 정보
-out 필수 정보 노출 형식을 정의 한다.(xml/json)
-date 선택 전일부터 이전 7일 중 특정일자 (미입력시 최근 7일 모두 조회)
-prodcd 선택 B034:고급휘발유, B027:보통휘발유, D047:자동차경유, C004:실내등유, K015:자동차부탄
-(미입력시 모든 제품 조회)
--- Result
-DATE 기준일자
-PRODCD 제품구분
-(B034:고급휘발유, B027:보통휘발유, D047:자동차경유, C004:실내등유, K015:자동차부탄)
-PRICE 평균가격
+## 3) 시군구별 평균가격(현재) — avgSigunPrice
+- Endpoint: `GET /api/avgSigunPrice.do`
+- Query: `code`(필수), `out`(필수), `sido`(필수, 2자리), `sigun`(선택, 4자리), `prodcd`(선택)
+- 응답 필드: `SIGUNCD`, `SIGUNNM`, `PRODCD`, `PRICE`, `DIFF`
+- 예시: `/api/avgSigunPrice.do?out=json&code=XXXXXX&sido=01&sigun=0101&prodcd=D047`
+- 샘플 응답
+  {"RESULT":{"OIL":[{"SIGUNCD":"0101","SIGUNNM":"강남구","PRODCD":"D047","PRICE":"1670.50","DIFF":"-0.80"}]}}
 
---------------------------------------------------------------------------------
-- 최근 7일간 전국 일일 상표별 평균가격 : 일 평균가격 확정 수치이며, 전일부터 7일간의 전국 일일 상표별 평균가격
-rest : http://www.opinet.co.kr/api/pollAvgRecentPrice.do?out=xml&code=XXXXXX&prodcd=B027
--- Request
-code 필수 공사에서 부여한 키(key) 정보
-out 필수 정보 노출 형식을 정의 한다.(xml/json)
-prodcd 선택 B034:고급휘발유, B027:보통휘발유, D047:자동차경유, C004:실내등유(미입력시 모든 제품 조회)
-pollcd 선택 SKE:SK에너지, GSC:GS칼텍스, HDO:현대오일뱅크, SOL:S-OIL, RTO:자영알뜰, RTX:고속도로알뜰, NHO:농협알뜰, ETC:자가상표, (미입력시 모든 상표조회)
--- Result
-DATE 기준일자
-PRODCD 제품구분(B034:고급휘발유, B027:보통휘발유, D047:자동차경유, C004:실내등유)
-POLL_DIV_CD 상표 (SKE:SK에너지, GSC:GS칼텍스, HDO:현대오일뱅크, SOL:S-OIL, RTO:자영알뜰, RTX:고속도로알뜰, NHO:농협알뜰, ETC:자가상표)
-PRICE 평균가격
+## 4) 최근 7일 전국 일일 평균가격 — avgRecentPrice
+- Endpoint: `GET /api/avgRecentPrice.do`
+- Query: `code`(필수), `out`(필수), `date`(선택, YYYYMMDD), `prodcd`(선택)
+- 응답 필드: `DATE`, `PRODCD`, `PRICE`
+- 예시: `/api/avgRecentPrice.do?out=json&code=XXXXXX&prodcd=B027`
+- 샘플 응답
+  {"RESULT":{"OIL":[{"DATE":"20240819","PRODCD":"B027","PRICE":"1728.10"}]}}
 
---------------------------------------------------------------------------------
-- 최근 7일간 전국 일일 지역별 평균가격 : 일 평균가격 확정 수치이며, 전일부터 7일간의 전국 일일 지역별 평균가격
-rest : http://www.opinet.co.kr/api/areaAvgRecentPrice.do?out=xml&code=XXXXXX&area=0101&date=20220811
--- Request
-code 필수 공사에서 부여한 키(key) 정보
-out 필수 정보 노출 형식을 정의 한다.(xml/json)
-area 필수 시도코드(2자리): 해당시도 기준, 시군코드(4자리) ： 해당시군 기준
-date 선택 전일부터 이전 7일 중 특정일자(미입력시 최근 7일 모두 조회)
-prodcd 선택 B034:고급휘발유, B027:보통휘발유, D047:자동차경유, C004:등유 (미입력시 모든 제품 조회)
--- Result
-DATE 기준일자
-AREA_CD 지역코드
-AREA_NM 지역명
-PRODCD 제품구분 (B034:고급휘발유, B027:보통휘발유, D047:자동차경유, C004:실내등유)
-PRICE 평균가격
+## 5) 최근 7일 상표별 평균가격 — pollAvgRecentPrice
+- Endpoint: `GET /api/pollAvgRecentPrice.do`
+- Query: `code`(필수), `out`(필수), `prodcd`(선택), `pollcd`(선택)
+- 응답 필드: `DATE`, `PRODCD`, `POLL_DIV_CD`, `PRICE`
+- 예시: `/api/pollAvgRecentPrice.do?out=json&code=XXXXXX&prodcd=B027&pollcd=SKE`
+- 샘플 응답
+  {"RESULT":{"OIL":[{"DATE":"20240824","PRODCD":"B027","POLL_DIV_CD":"SKE","PRICE":"1750.30"}]}}
 
---------------------------------------------------------------------------------
-- 최근 1주의 주간 평균가격 : (전국/시도별)
-rest : http://www.opinet.co.kr/api/avgLastWeek.do?prodcd=B027&code=XXXXXX&out=xml
--- Request 
-code 필수 공사에서 부여한 키(key) 정보
-out 필수 정보 노출 형식을 정의 한다.(xml/json)
-prodcd 선택 휘발유:B027, 경유:D047, 고급휘발유: B034, C004:실내등유, 자동차부탄: K015 (미입력시 모든 제품)
-sido 선택 시도코드 2자리 (미입력시 전국 평균 조회)
--- Result
-WEEK 기준 주 ( EX. 6월 3주 : 2016063)
-STA_DT 기준 주의 시작 일자
-END_DT 기준 주의 종료 일자
-AREA_CD 시도 구분 (00: 전국, 그 외는 해당 시도)
-PRODCD 제품구분(휘발유:B027, 경유:D047, 고급휘발유: B034, 자동차부탄: K015, C004:실내등유)
-PRICE 주간 평균 유가
+## 6) 최근 7일 지역별 평균가격 — areaAvgRecentPrice
+- Endpoint: `GET /api/areaAvgRecentPrice.do`
+- Query: `code`(필수), `out`(필수), `area`(필수, 시도2/시군4), `date`(선택), `prodcd`(선택)
+- 응답 필드: `DATE`, `AREA_CD`, `AREA_NM`, `PRODCD`, `PRICE`
+- 예시: `/api/areaAvgRecentPrice.do?out=json&code=XXXXXX&area=0101&prodcd=B027`
+- 샘플 응답
+  {"RESULT":{"OIL":[{"DATE":"20240824","AREA_CD":"0101","AREA_NM":"서울 강남구","PRODCD":"B027","PRICE":"1815.20"}]}}
 
---------------------------------------------------------------------------------
-- 전국/지역별 최저가 주유소(Top20) : 전국 또는 지역별 최저가 주유소 TOP20
-rest : http://www.opinet.co.kr/api/lowTop10.do?out=xml&code=XXXXXX&prodcd=B027&area=0101&cnt=2
--- Request 
-code 필수 공사에서 부여한 키(key) 정보
-out 필수 정보 노출 형식을 정의 한다.(xml/json)
-prodcd 필수 제품구분(휘발유:B027, 경유:D047, 고급휘발유: B034, 실내등유:C004, 자동차부탄: K015)
-area 선택 지역구분(미입력시 전국, 시도코드(2자리):해당시도 기준, 시군코드(4자리):해당시군 기준)
-cnt 선택 최저가순 결과 건수 (1 ~ 20 사이 숫자 입력, 미입력시 기본값 10건)
--- Result
-UNI_ID 주유소코드
-PRICE 판매가격
-POLL_DIV_CD 상표(SKE:SK에너지, GSC:GS칼텍스, HDO:현대오일뱅크, SOL:S-OIL, RTO:자영알뜰, RTX:고속도로알뜰, NHO:농협알뜰, ETC:자가상표, E1G: E1, SKG:SK가스 )
-OS_NM 상호
-VAN_ADR 지번주소
-NEW_ADR 도로명주소
-GIS_X_COOR GIS X좌표(KATEC)
-GIS_Y_COOR GIS Y좌표(KATEC)
+## 7) 최근 1주 주간 평균가격 — avgLastWeek
+- Endpoint: `GET /api/avgLastWeek.do`
+- Query: `code`(필수), `out`(필수), `prodcd`(선택), `sido`(선택)
+- 응답 필드: `WEEK`, `STA_DT`, `END_DT`, `AREA_CD(00=전국)`, `PRODCD`, `PRICE`
+- 예시: `/api/avgLastWeek.do?out=json&code=XXXXXX&prodcd=B027&sido=01`
+- 샘플 응답
+  {"RESULT":{"OIL":[{"WEEK":"202434","STA_DT":"20240819","END_DT":"20240825","AREA_CD":"01","PRODCD":"B027","PRICE":"1751.00"}]}}
 
---------------------------------------------------------------------------------
-- 반경 내 주유소 검색 : 특정 위치 중심으로 반경 내 주유소
-rest : http://www.opinet.co.kr/api/aroundAll.do?code=XXXXXX&x=314681.8&y=544837&radius=5000&sort=1&prodcd=B027&out=xml
--- Request 
-code 필수 공사에서 부여한 키(key) 정보
-out 필수 정보 노출 형식을 정의 한다.(xml/json)
-x 필수 기준 위치 X좌표 (KATEC)
-y 필수 기준 위치 Y좌표 (KATEC)
-radius 필수 반경 선택 ( 최대 5000, 단위 :m)
-prodcd 필수 제품 (휘발유:B027, 경유:D047, 고급휘발유: B034, 실내등유: C004, 자동차부탄: K015)
-sort 필수 1: 가격순, 2: 거리순
--- Result
-UNI_ID 주유소코드
-POLL_DIV_CD 상표(SKE:SK에너지, GSC:GS칼텍스, HDO:현대오일뱅크, SOL:S-OIL, RTO:자영알뜰, RTX:고속도로알뜰, NHO:농협알뜰, ETC:자가상표, E1G: E1, SKG:SK가스
-OS_NM 상호
-PRICE 판매가격
-DISTANCE 기준 위치로부터의 거리 (단위 : m)
-GIS_X_COOR GIS X좌표(KATEC)
-GIS_Y_COOR GIS Y좌표(KATEC)
+## 8) 전국/지역별 최저가 Top N — lowTop10
+- Endpoint: `GET /api/lowTop10.do`
+- Query: `code`(필수), `out`(필수), `prodcd`(필수), `area`(선택), `cnt(1~20)`(선택)
+- 응답 필드: `UNI_ID`, `PRICE`, `POLL_DIV_CD`, `OS_NM`, `VAN_ADR`, `NEW_ADR`, `GIS_X_COOR`, `GIS_Y_COOR`
+- 예시: `/api/lowTop10.do?out=json&code=XXXXXX&prodcd=B027&area=0101&cnt=10`
+- 샘플 응답
+  {"RESULT":{"OIL":[{"UNI_ID":"A0002517","OS_NM":"OO주유소","PRICE":"1650","POLL_DIV_CD":"SOL","NEW_ADR":"서울 강남구 ...","GIS_X_COOR":"198123","GIS_Y_COOR":"445678"}]}}
 
---------------------------------------------------------------------------------
-- 주유소 상세정보(ID) : 특정 주유소(ID)에 대한 기본정보 및 가격정보 등 상세정보
-rest : https://www.opinet.co.kr/api/detailById.do?code=XXXXXX&id=A0002517&out=xml
--- Request
-code 필수 공사에서 부여한 키(key) 정보
-out 필수 정보 노출 형식을 정의 한다.(xml/json)
-id 필수 
--- Result
-UNI_ID 주유소코드
-POLL_DIV_CD 상표(SKE:SK에너지, GSC:GS칼텍스, HDO:현대오일뱅크, SOL:S-OIL, RTO:자영알뜰, GPOLL_DIV_CD RTX:고속도로알뜰, NHO:농협알뜰, ETC:자가상표, E1G: E1, SKG:SK가스
-OS_NM 상호
-VAN_ADR 지번주소
-NEW_ADR 도로명주소
-TEL 전화번호
-SIGUNCD 소재지역 시군코드
-LPG_YN 업종구분 (N:주유소, Y:자동차충전소, C:주유소/충전소 겸업)
-MAINT_YN 경정비 시설 존재 여부
-CAR_WASH_YN 세차장 존재 여부
-KPETRO_YN 품질인증주유소 여부 (한국석유관리원의 품질인증프로그램 협약 업체)
-CVS_YN 편의점 존재 여부
-GIS_X_COOR GIS X좌표(KATEC)
-GIS_Y_COOR GIS Y좌표(KATEC)
-OIL_PRICE.PRODCD 휘발유:B027, 경유:D047, 고급휘발유: B034, 실내등유: C004, 자동차부탄: K015
-OIL_PRICE.PRICE 판매가격
-OIL_PRICE.TRADE_DT 기준일자
-OIL_PRICE.TRADE_TM 기준시간
+## 9) 반경 내 주유소 검색 — aroundAll
+- Endpoint: `GET /api/aroundAll.do`
+- Query: `code`(필수), `out`(필수), `x`(필수, KATEC), `y`(필수), `radius<=5000`(필수, m), `prodcd`(필수), `sort=1|2`(필수)
+- 응답 필드: `UNI_ID`, `POLL_DIV_CD`, `OS_NM`, `PRICE`, `DISTANCE`, `GIS_X_COOR`, `GIS_Y_COOR`
+- 예시: `/api/aroundAll.do?out=json&code=XXXXXX&x=314681.8&y=544837&radius=5000&sort=1&prodcd=B027`
+- 샘플 응답
+  {"RESULT":{"OIL":[{"UNI_ID":"A0001001","OS_NM":"OO셀프","POLL_DIV_CD":"GSC","PRICE":"1715","DISTANCE":"820","GIS_X_COOR":"314900","GIS_Y_COOR":"544990"}]}}
 
---------------------------------------------------------------------------------
-- 상호로 주유소 검색 : 상호 검색을 통한 주유소 조회
-rest : http://www.opinet.co.kr/api/searchByName.do?code=XXXXXX&out=xml&osnm=보라매&area=01
--- Request
-code 필수 공사에서 부여한 키(key) 정보
-out 필수 정보 노출 형식을 정의 한다.(xml/json)
-osnm 필수 상호 검색명 (검색어 두글자 이상)
-area 선택 검색지역(시도) 코드. 미입력시 전국 기준 검색
--- Result
-UNI_ID 주유소코드
-POLL_DIV_CD 주유소상표 (SKE:SK에너지, GSC:GS칼텍스, HDO:현대오일뱅크, SOL:S-OIL, RTO:자영알뜰, RTX:고속도로알뜰, NHO:농협알뜰, ETC:자가상표
-GPOLL_DIV_CD 충전소상표 (SKE:SK에너지, GSC:GS칼텍스, HDO:현대오일뱅크, SOL:S-OIL, ETC:자가상표, E1G: E1, SKG:SK가스
-OS_NM 상호
-VAN_ADR 지번주소
-NEW_ADR 도로명주소
-SIGUNCD 소재지 시군코드
-LPG_YN 업종구분 (N:주유소, Y: 자동차충전소, C:주유소/충전소 겸업)
-GIS_X_COOR GIS X좌표(KATEC)
-GIS_Y_COOR GIS Y좌표(KATEC)
+## 10) 주유소 상세정보(ID) — detailById
+- Endpoint: `GET /api/detailById.do`
+- Query: `code`(필수), `out`(필수), `id`(필수)
+- 응답 필드(기본): `UNI_ID`,`POLL_DIV_CD`,`OS_NM`,`NEW_ADR`,`TEL`,`SIGUNCD`,`LPG_YN`,`MAINT_YN`,`CAR_WASH_YN`,`KPETRO_YN`,`CVS_YN`,`GIS_X_COOR`,`GIS_Y_COOR`
+- 응답 필드(가격): `OIL_PRICE[]:{PRODCD,PRICE,TRADE_DT,TRADE_TM}`
+- 예시: `/api/detailById.do?out=json&code=XXXXXX&id=A0002517`
+- 샘플 응답
+  {"RESULT":{"OIL":[{"UNI_ID":"A0002517","OS_NM":"OO주유소","POLL_DIV_CD":"SKE","NEW_ADR":"서울 ...","TEL":"02-000-0000","SIGUNCD":"0101","LPG_YN":"N","MAINT_YN":"Y","CAR_WASH_YN":"Y","KPETRO_YN":"N","CVS_YN":"N","GIS_X_COOR":"198123","GIS_Y_COOR":"445678","OIL_PRICE":[{"PRODCD":"B027","PRICE":"1729","TRADE_DT":"20240825","TRADE_TM":"1020"}]}]}}
 
---------------------------------------------------------------------------------
-- 전국 면세유 주유소 평균가격(현재)  // 제외
---------------------------------------------------------------------------------
-- 시도별 면세유 주유소 평균가격(현재) // 제외
---------------------------------------------------------------------------------
-- 시군구별 면세유 주유소 평균가격(현재)  // 제외
---------------------------------------------------------------------------------
-- 최근 7일간 전국 일일 면세유 평균가격  // 제외
---------------------------------------------------------------------------------
-- 최근 7일간 전국 일일 상표별 면세유 평균가격  // 제외
---------------------------------------------------------------------------------
-- 전국/지역별 최저가 면세유 주유소(Top20)  // 제외
---------------------------------------------------------------------------------
-- 주유소의 요소수 판매가격(지역별) : 요소수 판매 주유소의 재고유무 및 판매단가
-rest : https://www.opinet.co.kr/api/ureaPrice.do?code=XXXXXX&out=xml&area=01
--- Request 
-code 필수 공사에서 부여한 키(key) 정보
-out 필수 정보 노출 형식을 정의 한다.(xml/json)
-area 필수 시도코드(2자리) 입력 시 해당 지역의 데이터 조회
---Result
-UNI_ID 주유소코드
-OS_NM 상호
-ADRESS 주소
-TEL 전화번호
-GIS_X_COOR GIS X좌표(KATEC)
-GIS_Y_COOR GIS Y좌표(KATEC)
-STOCK_YN 재고유무 (Y/N)
-PRICE 요소수 판매단가(원/리터) *업데이트 시각 : 7시, 13시, 18시, 24시
-TRADE_DT 보고일자(카드결제일자)
-TRADE_TM 보고시각(카드결제시각)
+## 11) 상호로 주유소 검색 — searchByName
+- Endpoint: `GET /api/searchByName.do`
+- Query: `code`(필수), `out`(필수), `osnm`(필수, 2자 이상), `area`(선택, 시도)
+- 응답 필드: `UNI_ID`, `POLL_DIV_CD`, `OS_NM`, `NEW_ADR`, `SIGUNCD`, `GIS_X_COOR`, `GIS_Y_COOR`
+- 예시: `/api/searchByName.do?out=json&code=XXXXXX&osnm=보라매&area=01`
+- 샘플 응답
+  {"RESULT":{"OIL":[{"UNI_ID":"A0003001","OS_NM":"보라매OO주유소","POLL_DIV_CD":"RTO","NEW_ADR":"서울 동작구 ...","SIGUNCD":"0115"}]}}
 
---------------------------------------------------------------------------------
-- 지역코드 조회 : 오피넷 데이터 관련 지역코드
---------------------------------------------------------------------------------
-rest : https://www.opinet.co.kr/api/areaCode.do?out=xml&code=XXXXXX&area=01
--- Request 
-code 필수 공사에서 부여한 키(key) 정보
-out 필수 정보 노출 형식을 정의 한다.(xml/json)
-area 선택 미입력시 시도별 코드 조회, 특정 시도코드 입력시 지역내 시/군/구 코드 조회
--- Result
-AREA_CD 지역코드
-AREA_NM 지역명
+## 12) 요소수 판매가격(지역별) — ureaPrice
+- Endpoint: `GET /api/ureaPrice.do`
+- Query: `code`(필수), `out`(필수), `area`(필수, 시도 2자리)
+- 응답 필드: `UNI_ID`, `OS_NM`, `ADRESS`, `TEL`, `GIS_X_COOR`, `GIS_Y_COOR`, `STOCK_YN`, `PRICE`, `TRADE_DT`, `TRADE_TM`
+- 예시: `/api/ureaPrice.do?out=json&code=XXXXXX&area=01`
+- 샘플 응답
+  {"RESULT":{"OIL":[{"UNI_ID":"A0009001","OS_NM":"OO주유소","ADRESS":"서울 ...","TEL":"02-...","STOCK_YN":"Y","PRICE":"1200","TRADE_DT":"20240825","TRADE_TM":"1300"}]}}
 
-----------------------------------------
-----------------------------------------
-- API Limit(하루 call 제한 수) : 1500
-- 갱신시간
-  - 현재 판매가격 : 1,2,9,12,16,19시
-  - 일일 평균가격 : 24시
-  - 주간 평균가격 : 금요일 10시
-  - 요소수 판매가격 : 7,13,18,24시
+## 13) 지역코드 조회 — areaCode
+- Endpoint: `GET /api/areaCode.do`
+- Query: `code`(필수), `out`(필수), `area`(선택, 시도코드 2자리 입력시 해당 시군구 목록)
+- 응답 필드: `AREA_CD`, `AREA_NM`
+- 예시: `/api/areaCode.do?out=json&code=XXXXXX` 또는 `/api/areaCode.do?out=json&code=XXXXXX&area=01`
+- 샘플 응답
+  {"RESULT":{"OIL":[{"AREA_CD":"01","AREA_NM":"서울"},{"AREA_CD":"0101","AREA_NM":"강남구"}]}}
+
+### 제외(비범위)
+- 면세유 관련 평균가/상표별/최저가 등 면세유 전용 엔드포인트 전부 제외
