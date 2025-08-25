@@ -3,7 +3,7 @@
 --------------------------------------------------------------------------------
 - 전국 주유소 평균가격(현재) : 현재 오피넷에 게시되고 있는 전국 주유소 평균 가격
 rest : http://www.opinet.co.kr/api/avgAllPrice.do?out=xml&code=XXXXXX
--- Request 
+-- Request
 code 필수 공사에서 부여한 키(key) 정보
 out 필수 정보 노출 형식을 정의 한다.(xml/json)
 -- Result
