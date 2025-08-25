@@ -8,7 +8,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Models\AvgAllPriceModel.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Models\AvgAllPriceModel.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Dapper" Version="2.0.151" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.8" />
+    <PackageReference Include="Quartz.Extensions.Hosting" Version="3.15.0" />
   </ItemGroup>
 
 </Project>
