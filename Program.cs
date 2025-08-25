@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Hosting;
 using OpinetScheduler;
 using OpinetScheduler.Jobs;
+using OpinetScheduler.Services;
 using Quartz;
 using Quartz.Impl.Matchers;
 
@@ -63,6 +64,13 @@ internal class Program
         {
             options.AwaitApplicationStarted = true;
             options.WaitForJobsToComplete = true;
+        });
+
+        // OpinetClient 등록 (HttpClient/DI)
+        builder.Services.AddHttpClient<OpinetClient>(client =>
+        {
+            client.BaseAddress = new Uri("https://www.opinet.co.kr");
+            client.Timeout = TimeSpan.FromSeconds(15);
         });
 
         var app = builder.Build();
