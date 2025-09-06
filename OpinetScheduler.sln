@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36414.22
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Opinet_xUnitTest", "Opinet_xUnitTest\Opinet_xUnitTest.csproj", "{0835D228-9ED6-B6F4-3690-E6DF7E3962B9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpinetScheduler", "OpinetScheduler\OpinetScheduler.csproj", "{1E10A84E-08DB-B045-77FC-C765ED48CBEE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0835D228-9ED6-B6F4-3690-E6DF7E3962B9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0835D228-9ED6-B6F4-3690-E6DF7E3962B9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0835D228-9ED6-B6F4-3690-E6DF7E3962B9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0835D228-9ED6-B6F4-3690-E6DF7E3962B9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1E10A84E-08DB-B045-77FC-C765ED48CBEE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1E10A84E-08DB-B045-77FC-C765ED48CBEE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1E10A84E-08DB-B045-77FC-C765ED48CBEE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1E10A84E-08DB-B045-77FC-C765ED48CBEE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1BDB007F-B563-4B04-AE59-5AD44CAC9AC2}
+	EndGlobalSection
+EndGlobal

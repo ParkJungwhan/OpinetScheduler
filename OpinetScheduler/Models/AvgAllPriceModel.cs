@@ -1,3 +1,5 @@
+namespace OpinetScheduler.Models;
+
 public class OIL
 {
     public string TRADE_DT { get; set; }
