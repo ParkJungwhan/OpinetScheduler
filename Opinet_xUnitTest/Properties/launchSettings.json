@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Opinet_xUnitTest": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "OPINET_API_KEY": "F230912250"
+      }
+    }
+  }
+}

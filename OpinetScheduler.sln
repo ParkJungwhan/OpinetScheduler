@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36414.22
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpinetScheduler", "OpinetScheduler.csproj", "{FABD45E8-BF5B-F62E-771F-8C999F900145}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpinetScheduler", "PoinetScheduler\OpinetScheduler.csproj", "{77789496-6F4F-4FDF-E934-0C6F30D672EA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Opinet_xUnitTest", "..\Opinet_xUnitTest\Opinet_xUnitTest.csproj", "{1C925A4B-6930-4D78-9A57-95BEB22DE1FC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Opinet_xUnitTest", "Opinet_xUnitTest\Opinet_xUnitTest.csproj", "{0835D228-9ED6-B6F4-3690-E6DF7E3962B9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,14 +13,14 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{FABD45E8-BF5B-F62E-771F-8C999F900145}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{FABD45E8-BF5B-F62E-771F-8C999F900145}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{FABD45E8-BF5B-F62E-771F-8C999F900145}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{FABD45E8-BF5B-F62E-771F-8C999F900145}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1C925A4B-6930-4D78-9A57-95BEB22DE1FC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1C925A4B-6930-4D78-9A57-95BEB22DE1FC}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1C925A4B-6930-4D78-9A57-95BEB22DE1FC}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1C925A4B-6930-4D78-9A57-95BEB22DE1FC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{77789496-6F4F-4FDF-E934-0C6F30D672EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{77789496-6F4F-4FDF-E934-0C6F30D672EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77789496-6F4F-4FDF-E934-0C6F30D672EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{77789496-6F4F-4FDF-E934-0C6F30D672EA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0835D228-9ED6-B6F4-3690-E6DF7E3962B9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0835D228-9ED6-B6F4-3690-E6DF7E3962B9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0835D228-9ED6-B6F4-3690-E6DF7E3962B9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0835D228-9ED6-B6F4-3690-E6DF7E3962B9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
