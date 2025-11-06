@@ -4,7 +4,6 @@ using OpinetScheduler;
 using OpinetScheduler.Jobs;
 using OpinetScheduler.Services;
 using Quartz;
-using Quartz.Impl.Matchers;
 
 internal class Program
 {
@@ -13,6 +12,10 @@ internal class Program
         Console.WriteLine("Hello, World!");
 
         var builder = Host.CreateApplicationBuilder(args);
+
+        // OpinetMDB.db 파일 연결해서 MDB 파일 읽기
+        // area 정보 거져오기
+        builder.Services.AddSingleton<OpinetMDB>();
 
         // 타임존: 서울(Asia/Seoul)
         var krTz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Seoul");
@@ -73,11 +76,10 @@ internal class Program
             client.Timeout = TimeSpan.FromSeconds(15);
         });
 
-        // OpinetMDB.db 파일 연결해서 MDB 파일 읽기
-        // area 정보 거져오기
-        builder.Services.AddSingleton<OpinetMDB>();
-
         var app = builder.Build();
+
+        var mdb = app.Services.GetService<OpinetMDB>();
+        await mdb.GetMasterData();
 
         // (선택) 스케줄러 상태 로그 예시
         var sched = app.Services.GetRequiredService<ISchedulerFactory>();
