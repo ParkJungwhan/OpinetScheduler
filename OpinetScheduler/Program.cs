@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Hosting;
 using OpinetScheduler;
 using OpinetScheduler.Jobs;
+using OpinetScheduler.Repositories;
 using OpinetScheduler.Services;
 using Quartz;
 
@@ -16,6 +17,13 @@ internal class Program
         // OpinetMDB.db 파일 연결해서 MDB 파일 읽기
         // area 정보 거져오기
         builder.Services.AddSingleton<OpinetMDB>();
+
+        builder.Services.AddSingleton<DapperService>();     //DB Connector
+
+        // Add all repositories
+        builder.Services.AddScoped<IStationRepository, StationRepository>();
+
+        ////////////////////////////////////////
 
         // 타임존: 서울(Asia/Seoul)
         var krTz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Seoul");
