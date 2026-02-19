@@ -71,6 +71,12 @@ if (args.Contains("--sync-required-apis", StringComparer.OrdinalIgnoreCase))
     return;
 }
 
+if (args.Contains("--sync-detail-by-id", StringComparer.OrdinalIgnoreCase))
+{
+    await scheduler.SyncDetailByIdFromStoredTargetsAsync(db, apiKey, CancellationToken.None);
+    return;
+}
+
 if (args.Contains("--once", StringComparer.OrdinalIgnoreCase))
 {
     var smoke = args.Contains("--smoke", StringComparer.OrdinalIgnoreCase);

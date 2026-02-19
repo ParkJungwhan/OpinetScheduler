@@ -133,12 +133,12 @@ public sealed class OpinetScheduler
     public async Task SyncRequiredApisAsync(NpgsqlConnection db, string apiKey, CancellationToken ct)
     {
         _logger.LogInformation("필수 API 전체 동기화 시작 (1~11, 19 / 12~18 제외)");
-        var jobs = BuildRequiredApiJobsForInitialLoad();
+        var jobs = await BuildRequiredApiJobsForInitialLoadAsync(db, ct);
         await ExecuteJobsAsync(db, apiKey, ct, jobs, stopOnError: false);
         _logger.LogInformation("필수 API 전체 동기화 완료. 실행건수={Count}", jobs.Count);
     }
 
-    private List<ScheduledApiCall> BuildRequiredApiJobsForInitialLoad()
+    private async Task<List<ScheduledApiCall>> BuildRequiredApiJobsForInitialLoadAsync(NpgsqlConnection db, CancellationToken ct)
     {
         var jobs = new List<ScheduledApiCall>
         {
@@ -172,17 +172,50 @@ public sealed class OpinetScheduler
                 ["prodcd"] = p.Product
             }));
 
-        foreach (var id in _settings.Region.StationIdsForDetail)
-            jobs.Add(new("detailById", "/api/detailById.do", new() { ["id"] = id }));
-
         foreach (var name in _settings.Region.StationNamesForSearch)
             jobs.Add(new("searchByName", "/api/searchByName.do", new() { ["osnm"] = name, ["area"] = "01" }));
+
+        var detailIds = await LoadDetailTargetIdsAsync(db, ct);
+        foreach (var id in detailIds)
+            jobs.Add(new("detailById", "/api/detailById.do", new() { ["id"] = id }));
 
         jobs.Add(new("areaCode", "/api/areaCode.do", new()));
         foreach (var sido in _settings.Region.SidoCodes)
             jobs.Add(new("areaCode", "/api/areaCode.do", new() { ["area"] = sido }));
 
         return jobs;
+    }
+
+    public async Task SyncDetailByIdFromStoredTargetsAsync(NpgsqlConnection db, string apiKey, CancellationToken ct)
+    {
+        _logger.LogInformation("--sync-detail-by-id 모드 실행 (저장된 대상 ID 기반)");
+        var ids = await LoadDetailTargetIdsAsync(db, ct);
+        var jobs = ids.Select(id => new ScheduledApiCall("detailById", "/api/detailById.do", new() { ["id"] = id })).ToList();
+        await ExecuteJobsAsync(db, apiKey, ct, jobs, stopOnError: false);
+        var count = await db.QuerySingleAsync<int>("select count(*) from opinet_detail_by_id;");
+        _logger.LogInformation("detailById 동기화 완료. opinet_detail_by_id={Count}", count);
+    }
+
+    private async Task<List<string>> LoadDetailTargetIdsAsync(NpgsqlConnection db, CancellationToken ct)
+    {
+        var ids = (await db.QueryAsync<string>(new CommandDefinition(@"
+            with seeded as (
+                select uni_id, max(updated_at) as ts from opinet_low_top group by uni_id
+                union all
+                select uni_id, max(updated_at) as ts from opinet_search_by_name group by uni_id
+            )
+            select uni_id
+            from seeded
+            where uni_id is not null and length(uni_id) > 0
+            group by uni_id
+            order by max(ts) desc
+            limit @n;", new { n = _settings.Runtime.DetailByIdMaxTargets }, cancellationToken: ct))).ToList();
+
+        if (ids.Count == 0)
+            ids.AddRange(_settings.Region.StationIdsForDetail);
+
+        _logger.LogInformation("detailById 대상 ID 수집 완료: {Count}", ids.Count);
+        return ids;
     }
 
     private async Task ExecuteJobsAsync(NpgsqlConnection db, string apiKey, CancellationToken ct, List<ScheduledApiCall> jobs, bool stopOnError)

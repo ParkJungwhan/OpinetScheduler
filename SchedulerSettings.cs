@@ -72,4 +72,5 @@ public sealed class AroundPoint
 public sealed class RuntimeSettings
 {
     public required int TickSeconds { get; init; }
+    public int DetailByIdMaxTargets { get; init; } = 50;
 }
