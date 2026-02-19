@@ -47,6 +47,12 @@ var scheduler = new OpinetScheduler(
     loggerFactory.CreateLogger<OpinetClient>(),
     loggerFactory.CreateLogger<SnapshotWriter>());
 
+if (args.Contains("--sync-area-codes", StringComparer.OrdinalIgnoreCase))
+{
+    await scheduler.SyncAreaCodesAsync(db, apiKey, CancellationToken.None);
+    return;
+}
+
 if (args.Contains("--once", StringComparer.OrdinalIgnoreCase))
 {
     var smoke = args.Contains("--smoke", StringComparer.OrdinalIgnoreCase);
@@ -98,6 +104,36 @@ public sealed class OpinetScheduler
 
         _logger.LogInformation("--once 모드 실행");
         await RunDueJobsAsync(db, apiKey, CancellationToken.None, forceAll: true);
+    }
+
+    public async Task SyncAreaCodesAsync(NpgsqlConnection db, string apiKey, CancellationToken ct)
+    {
+        _logger.LogInformation("--sync-area-codes 모드 실행 (전국 + 시도별 시군구 전체)");
+
+        var now = DateTimeOffset.Now;
+        var nowUtc = now.UtcDateTime;
+
+        var jobs = new List<ScheduledApiCall> { new("areaCode", "/api/areaCode.do", new()) };
+        foreach (var sido in _settings.Region.SidoCodes)
+            jobs.Add(new("areaCode", "/api/areaCode.do", new() { ["area"] = sido }));
+
+        foreach (var job in jobs)
+        {
+            try
+            {
+                var response = await _client.GetJsonAsync(apiKey, job.Path, job.Query, ct);
+                await _writer.StoreAsync(db, job.EndpointName, job.Query, response, nowUtc, ct);
+                await DbBootstrap.LogCallAsync(db, now.Date, nowUtc, job.EndpointName, true, 200, null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "지역코드 동기화 실패: query={Query}", JsonSerializer.Serialize(job.Query));
+                await DbBootstrap.LogCallAsync(db, now.Date, nowUtc, job.EndpointName, false, null, ex.Message);
+            }
+        }
+
+        var count = await db.QuerySingleAsync<int>("select count(*) from opinet_area_codes;");
+        _logger.LogInformation("지역코드 동기화 완료. opinet_area_codes={Count}", count);
     }
 
     private async Task RunDueJobsAsync(NpgsqlConnection db, string apiKey, CancellationToken ct, bool forceAll = false)
