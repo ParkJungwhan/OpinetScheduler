@@ -130,6 +130,83 @@ public sealed class OpinetScheduler
         _logger.LogInformation("API #2 적재 완료. opinet_avg_sido_price={Count}", count);
     }
 
+    public async Task SyncRequiredApisAsync(NpgsqlConnection db, string apiKey, CancellationToken ct)
+    {
+        _logger.LogInformation("필수 API 전체 동기화 시작 (1~11, 19 / 12~18 제외)");
+        var jobs = BuildRequiredApiJobsForInitialLoad();
+        await ExecuteJobsAsync(db, apiKey, ct, jobs, stopOnError: false);
+        _logger.LogInformation("필수 API 전체 동기화 완료. 실행건수={Count}", jobs.Count);
+    }
+
+    private List<ScheduledApiCall> BuildRequiredApiJobsForInitialLoad()
+    {
+        var jobs = new List<ScheduledApiCall>
+        {
+            new("avgAllPrice", "/api/avgAllPrice.do", new())
+        };
+
+        foreach (var sido in _settings.Region.SidoCodes)
+        {
+            jobs.Add(new("avgSidoPrice", "/api/avgSidoPrice.do", new() { ["sido"] = sido }));
+            jobs.Add(new("avgSigunPrice", "/api/avgSigunPrice.do", new() { ["sido"] = sido }));
+        }
+
+        jobs.Add(new("avgRecentPrice", "/api/avgRecentPrice.do", new()));
+        jobs.Add(new("pollAvgRecentPrice", "/api/pollAvgRecentPrice.do", new()));
+
+        foreach (var area in _settings.Region.AreaCodesForAreaAvgRecent)
+            jobs.Add(new("areaAvgRecentPrice", "/api/areaAvgRecentPrice.do", new() { ["area"] = area }));
+
+        jobs.Add(new("avgLastWeek", "/api/avgLastWeek.do", new()));
+
+        foreach (var prod in _settings.Products.TopProducts)
+            jobs.Add(new("lowTop10", "/api/lowTop10.do", new() { ["prodcd"] = prod, ["cnt"] = "20" }));
+
+        foreach (var p in _settings.Region.AroundPoints)
+            jobs.Add(new("aroundAll", "/api/aroundAll.do", new()
+            {
+                ["x"] = p.X.ToString(CultureInfo.InvariantCulture),
+                ["y"] = p.Y.ToString(CultureInfo.InvariantCulture),
+                ["radius"] = p.Radius.ToString(CultureInfo.InvariantCulture),
+                ["sort"] = p.Sort.ToString(CultureInfo.InvariantCulture),
+                ["prodcd"] = p.Product
+            }));
+
+        foreach (var id in _settings.Region.StationIdsForDetail)
+            jobs.Add(new("detailById", "/api/detailById.do", new() { ["id"] = id }));
+
+        foreach (var name in _settings.Region.StationNamesForSearch)
+            jobs.Add(new("searchByName", "/api/searchByName.do", new() { ["osnm"] = name, ["area"] = "01" }));
+
+        jobs.Add(new("areaCode", "/api/areaCode.do", new()));
+        foreach (var sido in _settings.Region.SidoCodes)
+            jobs.Add(new("areaCode", "/api/areaCode.do", new() { ["area"] = sido }));
+
+        return jobs;
+    }
+
+    private async Task ExecuteJobsAsync(NpgsqlConnection db, string apiKey, CancellationToken ct, List<ScheduledApiCall> jobs, bool stopOnError)
+    {
+        var now = DateTimeOffset.Now;
+        var nowUtc = now.UtcDateTime;
+
+        foreach (var job in jobs)
+        {
+            try
+            {
+                var response = await _client.GetJsonAsync(apiKey, job.Path, job.Query, ct);
+                await _writer.StoreAsync(db, job.EndpointName, job.Query, response, nowUtc, ct);
+                await DbBootstrap.LogCallAsync(db, now.Date, nowUtc, job.EndpointName, true, 200, null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "동기화 실패: endpoint={Endpoint}, query={Query}", job.EndpointName, JsonSerializer.Serialize(job.Query));
+                await DbBootstrap.LogCallAsync(db, now.Date, nowUtc, job.EndpointName, false, null, ex.Message);
+                if (stopOnError) throw;
+            }
+        }
+    }
+
     private async Task RunDueJobsAsync(NpgsqlConnection db, string apiKey, CancellationToken ct, bool forceAll = false)
     {
         var now = DateTimeOffset.Now;

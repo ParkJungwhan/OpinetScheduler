@@ -66,6 +66,129 @@ create table if not exists opinet_avg_sido_price (
     updated_at timestamptz not null default now(),
     primary key (sido_cd, prodcd)
 );
+
+create table if not exists opinet_avg_sigun_price (
+    sigun_cd text not null,
+    sigun_nm text null,
+    prodcd text not null,
+    price numeric(10,3) null,
+    diff numeric(10,3) null,
+    source_collected_at timestamptz not null,
+    updated_at timestamptz not null default now(),
+    primary key (sigun_cd, prodcd)
+);
+
+create table if not exists opinet_avg_recent_price (
+    base_date text not null,
+    prodcd text not null,
+    price numeric(10,3) null,
+    source_collected_at timestamptz not null,
+    updated_at timestamptz not null default now(),
+    primary key (base_date, prodcd)
+);
+
+create table if not exists opinet_poll_avg_recent_price (
+    base_date text not null,
+    prodcd text not null,
+    poll_div_cd text not null,
+    price numeric(10,3) null,
+    source_collected_at timestamptz not null,
+    updated_at timestamptz not null default now(),
+    primary key (base_date, prodcd, poll_div_cd)
+);
+
+create table if not exists opinet_area_avg_recent_price (
+    base_date text not null,
+    area_cd text not null,
+    area_nm text null,
+    prodcd text not null,
+    price numeric(10,3) null,
+    source_collected_at timestamptz not null,
+    updated_at timestamptz not null default now(),
+    primary key (base_date, area_cd, prodcd)
+);
+
+create table if not exists opinet_avg_last_week (
+    week text not null,
+    sta_dt text null,
+    end_dt text null,
+    area_cd text not null,
+    prodcd text not null,
+    price numeric(10,3) null,
+    source_collected_at timestamptz not null,
+    updated_at timestamptz not null default now(),
+    primary key (week, area_cd, prodcd)
+);
+
+create table if not exists opinet_low_top (
+    uni_id text primary key,
+    price numeric(10,3) null,
+    poll_div_cd text null,
+    os_nm text null,
+    van_adr text null,
+    new_adr text null,
+    gis_x_coor numeric(14,4) null,
+    gis_y_coor numeric(14,4) null,
+    source_collected_at timestamptz not null,
+    updated_at timestamptz not null default now()
+);
+
+create table if not exists opinet_around_all (
+    uni_id text primary key,
+    poll_div_cd text null,
+    os_nm text null,
+    price numeric(10,3) null,
+    distance numeric(14,3) null,
+    gis_x_coor numeric(14,4) null,
+    gis_y_coor numeric(14,4) null,
+    source_collected_at timestamptz not null,
+    updated_at timestamptz not null default now()
+);
+
+create table if not exists opinet_detail_by_id (
+    uni_id text primary key,
+    poll_div_cd text null,
+    os_nm text null,
+    van_adr text null,
+    new_adr text null,
+    tel text null,
+    siguncd text null,
+    lpg_yn text null,
+    maint_yn text null,
+    car_wash_yn text null,
+    kpetro_yn text null,
+    cvs_yn text null,
+    gis_x_coor numeric(14,4) null,
+    gis_y_coor numeric(14,4) null,
+    source_collected_at timestamptz not null,
+    updated_at timestamptz not null default now()
+);
+
+create table if not exists opinet_detail_by_id_prices (
+    uni_id text not null,
+    prodcd text not null,
+    price numeric(10,3) null,
+    trade_dt text null,
+    trade_tm text null,
+    source_collected_at timestamptz not null,
+    updated_at timestamptz not null default now(),
+    primary key (uni_id, prodcd)
+);
+
+create table if not exists opinet_search_by_name (
+    uni_id text primary key,
+    poll_div_cd text null,
+    gpoll_div_cd text null,
+    os_nm text null,
+    van_adr text null,
+    new_adr text null,
+    siguncd text null,
+    lpg_yn text null,
+    gis_x_coor numeric(14,4) null,
+    gis_y_coor numeric(14,4) null,
+    source_collected_at timestamptz not null,
+    updated_at timestamptz not null default now()
+);
 ");
     }
 

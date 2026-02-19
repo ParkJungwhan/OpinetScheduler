@@ -65,6 +65,12 @@ if (args.Contains("--sync-api-2", StringComparer.OrdinalIgnoreCase))
     return;
 }
 
+if (args.Contains("--sync-required-apis", StringComparer.OrdinalIgnoreCase))
+{
+    await scheduler.SyncRequiredApisAsync(db, apiKey, CancellationToken.None);
+    return;
+}
+
 if (args.Contains("--once", StringComparer.OrdinalIgnoreCase))
 {
     var smoke = args.Contains("--smoke", StringComparer.OrdinalIgnoreCase);
