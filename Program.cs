@@ -49,7 +49,8 @@ var scheduler = new OpinetScheduler(
 
 if (args.Contains("--once", StringComparer.OrdinalIgnoreCase))
 {
-    await scheduler.RunOnceAsync(db, apiKey);
+    var smoke = args.Contains("--smoke", StringComparer.OrdinalIgnoreCase);
+    await scheduler.RunOnceAsync(db, apiKey, smoke);
     return;
 }
 
@@ -86,8 +87,15 @@ public sealed class OpinetScheduler
         }
     }
 
-    public async Task RunOnceAsync(NpgsqlConnection db, string apiKey)
+    public async Task RunOnceAsync(NpgsqlConnection db, string apiKey, bool smoke)
     {
+        if (smoke)
+        {
+            _logger.LogInformation("--once --smoke 모드 실행 (엔드포인트당 1회)");
+            await RunSmokeJobsAsync(db, apiKey, CancellationToken.None);
+            return;
+        }
+
         _logger.LogInformation("--once 모드 실행");
         await RunDueJobsAsync(db, apiKey, CancellationToken.None, forceAll: true);
     }
@@ -95,6 +103,7 @@ public sealed class OpinetScheduler
     private async Task RunDueJobsAsync(NpgsqlConnection db, string apiKey, CancellationToken ct, bool forceAll = false)
     {
         var now = DateTimeOffset.Now;
+        var nowUtc = now.UtcDateTime;
         var dailyUsage = await DbBootstrap.GetDailyUsageAsync(db, now.Date);
         var available = Math.Max(0, _settings.CallPolicy.DailyLimit - _settings.CallPolicy.SafetyReserve - dailyUsage);
 
@@ -118,14 +127,50 @@ public sealed class OpinetScheduler
             try
             {
                 var response = await _client.GetJsonAsync(apiKey, job.Path, job.Query, ct);
-                await _writer.StoreAsync(db, job.EndpointName, job.Query, response, now, ct);
-                await DbBootstrap.LogCallAsync(db, now, job.EndpointName, true, 200, null);
+                await _writer.StoreAsync(db, job.EndpointName, job.Query, response, nowUtc, ct);
+                await DbBootstrap.LogCallAsync(db, now.Date, nowUtc, job.EndpointName, true, 200, null);
                 available--;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "호출 실패: {Endpoint}", job.EndpointName);
-                await DbBootstrap.LogCallAsync(db, now, job.EndpointName, false, null, ex.Message);
+                await DbBootstrap.LogCallAsync(db, now.Date, nowUtc, job.EndpointName, false, null, ex.Message);
+            }
+        }
+    }
+
+    private async Task RunSmokeJobsAsync(NpgsqlConnection db, string apiKey, CancellationToken ct)
+    {
+        var now = DateTimeOffset.Now;
+        var nowUtc = now.UtcDateTime;
+        var jobs = new List<ScheduledApiCall>
+        {
+            new("avgAllPrice", "/api/avgAllPrice.do", new()),
+            new("avgSidoPrice", "/api/avgSidoPrice.do", new() { ["sido"] = "01" }),
+            new("avgSigunPrice", "/api/avgSigunPrice.do", new() { ["sido"] = "01" }),
+            new("avgRecentPrice", "/api/avgRecentPrice.do", new()),
+            new("pollAvgRecentPrice", "/api/pollAvgRecentPrice.do", new() { ["prodcd"] = "B027" }),
+            new("areaAvgRecentPrice", "/api/areaAvgRecentPrice.do", new() { ["area"] = "01" }),
+            new("avgLastWeek", "/api/avgLastWeek.do", new() { ["prodcd"] = "B027" }),
+            new("lowTop10", "/api/lowTop10.do", new() { ["prodcd"] = "B027", ["cnt"] = "1" }),
+            new("aroundAll", "/api/aroundAll.do", new() { ["x"] = "314681.8", ["y"] = "544837", ["radius"] = "500", ["sort"] = "1", ["prodcd"] = "B027" }),
+            new("detailById", "/api/detailById.do", new() { ["id"] = "A0002517" }),
+            new("searchByName", "/api/searchByName.do", new() { ["osnm"] = "보라매", ["area"] = "01" }),
+            new("areaCode", "/api/areaCode.do", new())
+        };
+
+        foreach (var job in jobs)
+        {
+            try
+            {
+                var response = await _client.GetJsonAsync(apiKey, job.Path, job.Query, ct);
+                await _writer.StoreAsync(db, job.EndpointName, job.Query, response, nowUtc, ct);
+                await DbBootstrap.LogCallAsync(db, now.Date, nowUtc, job.EndpointName, true, 200, null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "SMOKE 호출 실패: {Endpoint}", job.EndpointName);
+                await DbBootstrap.LogCallAsync(db, now.Date, nowUtc, job.EndpointName, false, null, ex.Message);
             }
         }
     }
@@ -269,7 +314,7 @@ public sealed class SnapshotWriter
         string endpoint,
         Dictionary<string, string> query,
         JsonDocument payload,
-        DateTimeOffset collectedAt,
+        DateTime collectedAtUtc,
         CancellationToken ct)
     {
         var queryJson = JsonSerializer.Serialize(query);
@@ -280,16 +325,16 @@ public sealed class SnapshotWriter
             @"insert into opinet_api_snapshots(endpoint, query_json, payload_json, payload_hash, collected_at)
               values (@endpoint, @query_json::jsonb, @payload_json::jsonb, @payload_hash, @collected_at)
               on conflict (payload_hash) do nothing;",
-            new { endpoint, query_json = queryJson, payload_json = payloadJson, payload_hash = hash, collected_at = collectedAt },
+            new { endpoint, query_json = queryJson, payload_json = payloadJson, payload_hash = hash, collected_at = collectedAtUtc },
             cancellationToken: ct));
 
         if (endpoint == "areaCode")
-            await UpsertAreaCodeRowsAsync(db, payload, collectedAt, ct);
+            await UpsertAreaCodeRowsAsync(db, payload, collectedAtUtc, ct);
 
         _logger.LogInformation("저장 완료: endpoint={Endpoint}", endpoint);
     }
 
-    private static async Task UpsertAreaCodeRowsAsync(NpgsqlConnection db, JsonDocument payload, DateTimeOffset collectedAt, CancellationToken ct)
+    private static async Task UpsertAreaCodeRowsAsync(NpgsqlConnection db, JsonDocument payload, DateTime collectedAtUtc, CancellationToken ct)
     {
         if (!payload.RootElement.TryGetProperty("RESULT", out var result)) return;
         if (!result.TryGetProperty("OIL", out var oilRows)) return;
@@ -312,7 +357,7 @@ public sealed class SnapshotWriter
                       area_level = excluded.area_level,
                       parent_area_cd = excluded.parent_area_cd,
                       updated_at = excluded.updated_at;",
-                new { code, name, level, parent, updated = collectedAt },
+                new { code, name, level, parent, updated = collectedAtUtc },
                 cancellationToken: ct));
         }
     }
@@ -374,11 +419,11 @@ create table if not exists opinet_area_codes (
     public static async Task<int> GetDailyUsageAsync(NpgsqlConnection db, DateTime date)
         => await db.QuerySingleAsync<int>("select count(*) from opinet_api_call_log where call_date = @d", new { d = date });
 
-    public static Task LogCallAsync(NpgsqlConnection db, DateTimeOffset now, string endpoint, bool success, int? status, string? error)
+    public static Task LogCallAsync(NpgsqlConnection db, DateTime callDate, DateTime calledAtUtc, string endpoint, bool success, int? status, string? error)
         => db.ExecuteAsync(@"
 insert into opinet_api_call_log(call_date, called_at, endpoint, success, http_status, error_message)
 values (@call_date, @called_at, @endpoint, @success, @status, @error);",
-            new { call_date = now.Date, called_at = now, endpoint, success, status, error });
+            new { call_date = callDate, called_at = calledAtUtc, endpoint, success, status, error });
 }
 
 public sealed class OpinetApiKeyProvider
