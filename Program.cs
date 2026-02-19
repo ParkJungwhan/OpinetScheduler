@@ -53,6 +53,12 @@ if (args.Contains("--sync-area-codes", StringComparer.OrdinalIgnoreCase))
     return;
 }
 
+if (args.Contains("--sync-api-1", StringComparer.OrdinalIgnoreCase))
+{
+    await scheduler.SyncApi1AvgAllPriceAsync(db, apiKey, CancellationToken.None);
+    return;
+}
+
 if (args.Contains("--once", StringComparer.OrdinalIgnoreCase))
 {
     var smoke = args.Contains("--smoke", StringComparer.OrdinalIgnoreCase);
@@ -134,6 +140,31 @@ public sealed class OpinetScheduler
 
         var count = await db.QuerySingleAsync<int>("select count(*) from opinet_area_codes;");
         _logger.LogInformation("지역코드 동기화 완료. opinet_area_codes={Count}", count);
+    }
+
+    public async Task SyncApi1AvgAllPriceAsync(NpgsqlConnection db, string apiKey, CancellationToken ct)
+    {
+        _logger.LogInformation("--sync-api-1 모드 실행 (avgAllPrice 1회)");
+
+        var now = DateTimeOffset.Now;
+        var nowUtc = now.UtcDateTime;
+        var job = new ScheduledApiCall("avgAllPrice", "/api/avgAllPrice.do", new());
+
+        try
+        {
+            var response = await _client.GetJsonAsync(apiKey, job.Path, job.Query, ct);
+            await _writer.StoreAsync(db, job.EndpointName, job.Query, response, nowUtc, ct);
+            await DbBootstrap.LogCallAsync(db, now.Date, nowUtc, job.EndpointName, true, 200, null);
+
+            var count = await db.QuerySingleAsync<int>("select count(*) from opinet_avg_all_price;");
+            _logger.LogInformation("API #1 적재 완료. opinet_avg_all_price={Count}", count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "API #1 동기화 실패");
+            await DbBootstrap.LogCallAsync(db, now.Date, nowUtc, job.EndpointName, false, null, ex.Message);
+            throw;
+        }
     }
 
     private async Task RunDueJobsAsync(NpgsqlConnection db, string apiKey, CancellationToken ct, bool forceAll = false)
@@ -367,6 +398,9 @@ public sealed class SnapshotWriter
         if (endpoint == "areaCode")
             await UpsertAreaCodeRowsAsync(db, payload, collectedAtUtc, ct);
 
+        if (endpoint == "avgAllPrice")
+            await UpsertAvgAllPriceRowsAsync(db, payload, collectedAtUtc, ct);
+
         _logger.LogInformation("저장 완료: endpoint={Endpoint}", endpoint);
     }
 
@@ -394,6 +428,53 @@ public sealed class SnapshotWriter
                       parent_area_cd = excluded.parent_area_cd,
                       updated_at = excluded.updated_at;",
                 new { code, name, level, parent, updated = collectedAtUtc },
+                cancellationToken: ct));
+        }
+    }
+
+    private static async Task UpsertAvgAllPriceRowsAsync(NpgsqlConnection db, JsonDocument payload, DateTime collectedAtUtc, CancellationToken ct)
+    {
+        if (!payload.RootElement.TryGetProperty("RESULT", out var result)) return;
+        if (!result.TryGetProperty("OIL", out var oilRows)) return;
+        if (oilRows.ValueKind != JsonValueKind.Array) return;
+
+        foreach (var row in oilRows.EnumerateArray())
+        {
+            var tradeDt = row.TryGetProperty("TRADE_DT", out var td) ? td.GetString() : null;
+            var prodcd = row.TryGetProperty("PRODCD", out var pc) ? pc.GetString() : null;
+            var prodnm = row.TryGetProperty("PRODNM", out var pn) ? pn.GetString() : null;
+            var priceText = row.TryGetProperty("PRICE", out var pr) ? pr.GetString() : null;
+            var diffText = row.TryGetProperty("DIFF", out var df) ? df.GetString() : null;
+
+            if (string.IsNullOrWhiteSpace(tradeDt) || string.IsNullOrWhiteSpace(prodcd))
+                continue;
+
+            decimal? price = null;
+            if (decimal.TryParse(priceText, NumberStyles.Any, CultureInfo.InvariantCulture, out var p))
+                price = p;
+
+            decimal? diff = null;
+            if (decimal.TryParse(diffText, NumberStyles.Any, CultureInfo.InvariantCulture, out var d))
+                diff = d;
+
+            await db.ExecuteAsync(new CommandDefinition(
+                @"insert into opinet_avg_all_price(trade_dt, prodcd, prodnm, price, diff, source_collected_at, updated_at)
+                  values (@trade_dt, @prodcd, @prodnm, @price, @diff, @collected_at, now())
+                  on conflict (trade_dt, prodcd) do update
+                  set prodnm = excluded.prodnm,
+                      price = excluded.price,
+                      diff = excluded.diff,
+                      source_collected_at = excluded.source_collected_at,
+                      updated_at = now();",
+                new
+                {
+                    trade_dt = tradeDt,
+                    prodcd,
+                    prodnm,
+                    price,
+                    diff,
+                    collected_at = collectedAtUtc
+                },
                 cancellationToken: ct));
         }
     }
@@ -448,6 +529,17 @@ create table if not exists opinet_area_codes (
     area_level text not null,
     parent_area_cd text null,
     updated_at timestamptz not null
+);
+
+create table if not exists opinet_avg_all_price (
+    trade_dt text not null,
+    prodcd text not null,
+    prodnm text null,
+    price numeric(10,3) null,
+    diff numeric(10,3) null,
+    source_collected_at timestamptz not null,
+    updated_at timestamptz not null default now(),
+    primary key (trade_dt, prodcd)
 );
 ");
     }
