@@ -59,6 +59,12 @@ if (args.Contains("--sync-api-1", StringComparer.OrdinalIgnoreCase))
     return;
 }
 
+if (args.Contains("--sync-api-2", StringComparer.OrdinalIgnoreCase))
+{
+    await scheduler.SyncApi2AvgSidoPriceAsync(db, apiKey, CancellationToken.None);
+    return;
+}
+
 if (args.Contains("--once", StringComparer.OrdinalIgnoreCase))
 {
     var smoke = args.Contains("--smoke", StringComparer.OrdinalIgnoreCase);
@@ -165,6 +171,34 @@ public sealed class OpinetScheduler
             await DbBootstrap.LogCallAsync(db, now.Date, nowUtc, job.EndpointName, false, null, ex.Message);
             throw;
         }
+    }
+
+    public async Task SyncApi2AvgSidoPriceAsync(NpgsqlConnection db, string apiKey, CancellationToken ct)
+    {
+        _logger.LogInformation("--sync-api-2 모드 실행 (avgSidoPrice 시도 전체)");
+
+        var now = DateTimeOffset.Now;
+        var nowUtc = now.UtcDateTime;
+
+        foreach (var sido in _settings.Region.SidoCodes)
+        {
+            var job = new ScheduledApiCall("avgSidoPrice", "/api/avgSidoPrice.do", new() { ["sido"] = sido });
+            try
+            {
+                var response = await _client.GetJsonAsync(apiKey, job.Path, job.Query, ct);
+                await _writer.StoreAsync(db, job.EndpointName, job.Query, response, nowUtc, ct);
+                await DbBootstrap.LogCallAsync(db, now.Date, nowUtc, job.EndpointName, true, 200, null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "API #2 동기화 실패: sido={Sido}", sido);
+                await DbBootstrap.LogCallAsync(db, now.Date, nowUtc, job.EndpointName, false, null, ex.Message);
+                throw;
+            }
+        }
+
+        var count = await db.QuerySingleAsync<int>("select count(*) from opinet_avg_sido_price;");
+        _logger.LogInformation("API #2 적재 완료. opinet_avg_sido_price={Count}", count);
     }
 
     private async Task RunDueJobsAsync(NpgsqlConnection db, string apiKey, CancellationToken ct, bool forceAll = false)
@@ -401,6 +435,9 @@ public sealed class SnapshotWriter
         if (endpoint == "avgAllPrice")
             await UpsertAvgAllPriceRowsAsync(db, payload, collectedAtUtc, ct);
 
+        if (endpoint == "avgSidoPrice")
+            await UpsertAvgSidoPriceRowsAsync(db, payload, collectedAtUtc, ct);
+
         _logger.LogInformation("저장 완료: endpoint={Endpoint}", endpoint);
     }
 
@@ -440,11 +477,11 @@ public sealed class SnapshotWriter
 
         foreach (var row in oilRows.EnumerateArray())
         {
-            var tradeDt = row.TryGetProperty("TRADE_DT", out var td) ? td.GetString() : null;
-            var prodcd = row.TryGetProperty("PRODCD", out var pc) ? pc.GetString() : null;
-            var prodnm = row.TryGetProperty("PRODNM", out var pn) ? pn.GetString() : null;
-            var priceText = row.TryGetProperty("PRICE", out var pr) ? pr.GetString() : null;
-            var diffText = row.TryGetProperty("DIFF", out var df) ? df.GetString() : null;
+            var tradeDt = row.TryGetProperty("TRADE_DT", out var td) ? GetTextValue(td) : null;
+            var prodcd = row.TryGetProperty("PRODCD", out var pc) ? GetTextValue(pc) : null;
+            var prodnm = row.TryGetProperty("PRODNM", out var pn) ? GetTextValue(pn) : null;
+            var priceText = row.TryGetProperty("PRICE", out var pr) ? GetTextValue(pr) : null;
+            var diffText = row.TryGetProperty("DIFF", out var df) ? GetTextValue(df) : null;
 
             if (string.IsNullOrWhiteSpace(tradeDt) || string.IsNullOrWhiteSpace(prodcd))
                 continue;
@@ -477,6 +514,65 @@ public sealed class SnapshotWriter
                 },
                 cancellationToken: ct));
         }
+    }
+
+    private static async Task UpsertAvgSidoPriceRowsAsync(NpgsqlConnection db, JsonDocument payload, DateTime collectedAtUtc, CancellationToken ct)
+    {
+        if (!payload.RootElement.TryGetProperty("RESULT", out var result)) return;
+        if (!result.TryGetProperty("OIL", out var oilRows)) return;
+        if (oilRows.ValueKind != JsonValueKind.Array) return;
+
+        foreach (var row in oilRows.EnumerateArray())
+        {
+            var sidoCd = row.TryGetProperty("SIDOCD", out var sc) ? GetTextValue(sc) : null;
+            var sidoNm = row.TryGetProperty("SIDONM", out var sn) ? GetTextValue(sn) : null;
+            var prodcd = row.TryGetProperty("PRODCD", out var pc) ? GetTextValue(pc) : null;
+            var priceText = row.TryGetProperty("PRICE", out var pr) ? GetTextValue(pr) : null;
+            var diffText = row.TryGetProperty("DIFF", out var df) ? GetTextValue(df) : null;
+
+            if (string.IsNullOrWhiteSpace(sidoCd) || string.IsNullOrWhiteSpace(prodcd))
+                continue;
+
+            decimal? price = null;
+            if (decimal.TryParse(priceText, NumberStyles.Any, CultureInfo.InvariantCulture, out var p))
+                price = p;
+
+            decimal? diff = null;
+            if (decimal.TryParse(diffText, NumberStyles.Any, CultureInfo.InvariantCulture, out var d))
+                diff = d;
+
+            await db.ExecuteAsync(new CommandDefinition(
+                @"insert into opinet_avg_sido_price(sido_cd, sido_nm, prodcd, price, diff, source_collected_at, updated_at)
+                  values (@sido_cd, @sido_nm, @prodcd, @price, @diff, @collected_at, now())
+                  on conflict (sido_cd, prodcd) do update
+                  set sido_nm = excluded.sido_nm,
+                      price = excluded.price,
+                      diff = excluded.diff,
+                      source_collected_at = excluded.source_collected_at,
+                      updated_at = now();",
+                new
+                {
+                    sido_cd = sidoCd,
+                    sido_nm = sidoNm,
+                    prodcd,
+                    price,
+                    diff,
+                    collected_at = collectedAtUtc
+                },
+                cancellationToken: ct));
+        }
+    }
+
+    private static string? GetTextValue(JsonElement e)
+    {
+        return e.ValueKind switch
+        {
+            JsonValueKind.String => e.GetString(),
+            JsonValueKind.Number => e.GetRawText(),
+            JsonValueKind.True => "true",
+            JsonValueKind.False => "false",
+            _ => null
+        };
     }
 
     private static string ToSha256Hex(string input)
@@ -540,6 +636,17 @@ create table if not exists opinet_avg_all_price (
     source_collected_at timestamptz not null,
     updated_at timestamptz not null default now(),
     primary key (trade_dt, prodcd)
+);
+
+create table if not exists opinet_avg_sido_price (
+    sido_cd text not null,
+    sido_nm text null,
+    prodcd text not null,
+    price numeric(10,3) null,
+    diff numeric(10,3) null,
+    source_collected_at timestamptz not null,
+    updated_at timestamptz not null default now(),
+    primary key (sido_cd, prodcd)
 );
 ");
     }
