@@ -130,6 +130,98 @@ public sealed class OpinetScheduler
         _logger.LogInformation("API #2 적재 완료. opinet_avg_sido_price={Count}", count);
     }
 
+    public async Task SyncApi3AvgSigunPriceAsync(NpgsqlConnection db, string apiKey, CancellationToken ct)
+    {
+        _logger.LogInformation("--sync-api-3 모드 실행 (avgSigunPrice 시도 전체)");
+        var jobs = _settings.Region.SidoCodes
+            .Select(sido => new ScheduledApiCall("avgSigunPrice", "/api/avgSigunPrice.do", new() { ["sido"] = sido }))
+            .ToList();
+        await ExecuteJobsAsync(db, apiKey, ct, jobs, stopOnError: false);
+        var count = await db.QuerySingleAsync<int>("select count(*) from opinet_avg_sigun_price;");
+        _logger.LogInformation("API #3 적재 완료. opinet_avg_sigun_price={Count}", count);
+    }
+
+    public async Task SyncApi4AvgRecentPriceAsync(NpgsqlConnection db, string apiKey, CancellationToken ct)
+    {
+        _logger.LogInformation("--sync-api-4 모드 실행 (avgRecentPrice)");
+        var jobs = new List<ScheduledApiCall> { new("avgRecentPrice", "/api/avgRecentPrice.do", new()) };
+        await ExecuteJobsAsync(db, apiKey, ct, jobs, stopOnError: false);
+        var count = await db.QuerySingleAsync<int>("select count(*) from opinet_avg_recent_price;");
+        _logger.LogInformation("API #4 적재 완료. opinet_avg_recent_price={Count}", count);
+    }
+
+    public async Task SyncApi5PollAvgRecentPriceAsync(NpgsqlConnection db, string apiKey, CancellationToken ct)
+    {
+        _logger.LogInformation("--sync-api-5 모드 실행 (pollAvgRecentPrice)");
+        var jobs = new List<ScheduledApiCall> { new("pollAvgRecentPrice", "/api/pollAvgRecentPrice.do", new()) };
+        await ExecuteJobsAsync(db, apiKey, ct, jobs, stopOnError: false);
+        var count = await db.QuerySingleAsync<int>("select count(*) from opinet_poll_avg_recent_price;");
+        _logger.LogInformation("API #5 적재 완료. opinet_poll_avg_recent_price={Count}", count);
+    }
+
+    public async Task SyncApi6AreaAvgRecentPriceAsync(NpgsqlConnection db, string apiKey, CancellationToken ct)
+    {
+        _logger.LogInformation("--sync-api-6 모드 실행 (areaAvgRecentPrice 지역 전체)");
+        var jobs = _settings.Region.AreaCodesForAreaAvgRecent
+            .Select(area => new ScheduledApiCall("areaAvgRecentPrice", "/api/areaAvgRecentPrice.do", new() { ["area"] = area }))
+            .ToList();
+        await ExecuteJobsAsync(db, apiKey, ct, jobs, stopOnError: false);
+        var count = await db.QuerySingleAsync<int>("select count(*) from opinet_area_avg_recent_price;");
+        _logger.LogInformation("API #6 적재 완료. opinet_area_avg_recent_price={Count}", count);
+    }
+
+    public async Task SyncApi7AvgLastWeekAsync(NpgsqlConnection db, string apiKey, CancellationToken ct)
+    {
+        _logger.LogInformation("--sync-api-7 모드 실행 (avgLastWeek)");
+        var jobs = new List<ScheduledApiCall> { new("avgLastWeek", "/api/avgLastWeek.do", new()) };
+        await ExecuteJobsAsync(db, apiKey, ct, jobs, stopOnError: false);
+        var count = await db.QuerySingleAsync<int>("select count(*) from opinet_avg_last_week;");
+        _logger.LogInformation("API #7 적재 완료. opinet_avg_last_week={Count}", count);
+    }
+
+    public async Task SyncApi8LowTopAsync(NpgsqlConnection db, string apiKey, CancellationToken ct)
+    {
+        _logger.LogInformation("--sync-api-8 모드 실행 (lowTop10 제품 전체)");
+        var jobs = _settings.Products.TopProducts
+            .Select(prod => new ScheduledApiCall("lowTop10", "/api/lowTop10.do", new() { ["prodcd"] = prod, ["cnt"] = "20" }))
+            .ToList();
+        await ExecuteJobsAsync(db, apiKey, ct, jobs, stopOnError: false);
+        var count = await db.QuerySingleAsync<int>("select count(*) from opinet_low_top;");
+        _logger.LogInformation("API #8 적재 완료. opinet_low_top={Count}", count);
+    }
+
+    public async Task SyncApi9AroundAllAsync(NpgsqlConnection db, string apiKey, CancellationToken ct)
+    {
+        _logger.LogInformation("--sync-api-9 모드 실행 (aroundAll 포인트 전체)");
+        var jobs = _settings.Region.AroundPoints
+            .Select(p => new ScheduledApiCall("aroundAll", "/api/aroundAll.do", new()
+            {
+                ["x"] = p.X.ToString(CultureInfo.InvariantCulture),
+                ["y"] = p.Y.ToString(CultureInfo.InvariantCulture),
+                ["radius"] = p.Radius.ToString(CultureInfo.InvariantCulture),
+                ["sort"] = p.Sort.ToString(CultureInfo.InvariantCulture),
+                ["prodcd"] = p.Product
+            }))
+            .ToList();
+        await ExecuteJobsAsync(db, apiKey, ct, jobs, stopOnError: false);
+        var count = await db.QuerySingleAsync<int>("select count(*) from opinet_around_all;");
+        _logger.LogInformation("API #9 적재 완료. opinet_around_all={Count}", count);
+    }
+
+    public async Task SyncApi10DetailByIdAsync(NpgsqlConnection db, string apiKey, CancellationToken ct)
+        => await SyncDetailByIdFromStoredTargetsAsync(db, apiKey, ct);
+
+    public async Task SyncApi11SearchByNameAsync(NpgsqlConnection db, string apiKey, CancellationToken ct)
+    {
+        _logger.LogInformation("--sync-api-11 모드 실행 (searchByName seed 전체)");
+        var jobs = _settings.Region.StationNamesForSearch
+            .Select(name => new ScheduledApiCall("searchByName", "/api/searchByName.do", new() { ["osnm"] = name, ["area"] = "01" }))
+            .ToList();
+        await ExecuteJobsAsync(db, apiKey, ct, jobs, stopOnError: false);
+        var count = await db.QuerySingleAsync<int>("select count(*) from opinet_search_by_name;");
+        _logger.LogInformation("API #11 적재 완료. opinet_search_by_name={Count}", count);
+    }
+
     public async Task SyncRequiredApisAsync(NpgsqlConnection db, string apiKey, CancellationToken ct)
     {
         _logger.LogInformation("필수 API 전체 동기화 시작 (1~11, 19 / 12~18 제외)");

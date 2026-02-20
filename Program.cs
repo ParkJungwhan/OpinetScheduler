@@ -65,6 +65,16 @@ if (args.Contains("--sync-api-2", StringComparer.OrdinalIgnoreCase))
     return;
 }
 
+if (args.Contains("--sync-api-3", StringComparer.OrdinalIgnoreCase)) { await scheduler.SyncApi3AvgSigunPriceAsync(db, apiKey, CancellationToken.None); return; }
+if (args.Contains("--sync-api-4", StringComparer.OrdinalIgnoreCase)) { await scheduler.SyncApi4AvgRecentPriceAsync(db, apiKey, CancellationToken.None); return; }
+if (args.Contains("--sync-api-5", StringComparer.OrdinalIgnoreCase)) { await scheduler.SyncApi5PollAvgRecentPriceAsync(db, apiKey, CancellationToken.None); return; }
+if (args.Contains("--sync-api-6", StringComparer.OrdinalIgnoreCase)) { await scheduler.SyncApi6AreaAvgRecentPriceAsync(db, apiKey, CancellationToken.None); return; }
+if (args.Contains("--sync-api-7", StringComparer.OrdinalIgnoreCase)) { await scheduler.SyncApi7AvgLastWeekAsync(db, apiKey, CancellationToken.None); return; }
+if (args.Contains("--sync-api-8", StringComparer.OrdinalIgnoreCase)) { await scheduler.SyncApi8LowTopAsync(db, apiKey, CancellationToken.None); return; }
+if (args.Contains("--sync-api-9", StringComparer.OrdinalIgnoreCase)) { await scheduler.SyncApi9AroundAllAsync(db, apiKey, CancellationToken.None); return; }
+if (args.Contains("--sync-api-10", StringComparer.OrdinalIgnoreCase)) { await scheduler.SyncApi10DetailByIdAsync(db, apiKey, CancellationToken.None); return; }
+if (args.Contains("--sync-api-11", StringComparer.OrdinalIgnoreCase)) { await scheduler.SyncApi11SearchByNameAsync(db, apiKey, CancellationToken.None); return; }
+
 if (args.Contains("--sync-required-apis", StringComparer.OrdinalIgnoreCase))
 {
     await scheduler.SyncRequiredApisAsync(db, apiKey, CancellationToken.None);
